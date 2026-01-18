@@ -38,16 +38,22 @@ class Chat(commands.Cog):
             if not content:
                 content = "Someone summons me without purpose..."
 
-            # Get conversation history
+            # Get conversation history and format as context
             history = await get_conversation_history(str(message.channel.id))
 
-            # Build messages for API
-            messages = [{"role": "system", "content": SYSTEM_PROMPT}]
-            messages.extend(history)
-            messages.append({
-                "role": "user",
-                "content": f"[{message.author.display_name}]: {content}"
-            })
+            # Build system prompt with memory as context (not conversation turns)
+            system_with_memory = SYSTEM_PROMPT
+            if history:
+                memory_lines = []
+                for msg in history[-10:]:  # Last 10 messages max
+                    memory_lines.append(msg["content"])
+                system_with_memory += "\n\nRECENT MEMORY (for context only, do not re-answer):\n" + "\n".join(memory_lines)
+
+            # Build messages - only ONE user message
+            messages = [
+                {"role": "system", "content": system_with_memory},
+                {"role": "user", "content": f"[{message.author.display_name}]: {content}"}
+            ]
 
             try:
                 response = await get_completion(messages)
