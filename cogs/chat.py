@@ -1,10 +1,11 @@
+import io
 import random
 import discord
 from discord.ext import commands
 
-from config import INTERJECTION_CHANCE
-from prompts.melkior import SYSTEM_PROMPT, INTERJECTION_PROMPT
-from services.openrouter import get_completion
+from config import INTERJECTION_CHANCE, IMAGE_TRIGGERS
+from prompts.melkior import SYSTEM_PROMPT, INTERJECTION_PROMPT, IMAGE_CONJURE_PROMPT
+from services.openrouter import get_completion, generate_image
 from services.database import save_message, get_conversation_history
 
 
@@ -26,6 +27,11 @@ class Chat(commands.Cog):
         elif random.random() < INTERJECTION_CHANCE:
             await self.handle_interjection(message)
 
+    def _is_image_request(self, content: str) -> bool:
+        """Check if the message is asking for an image."""
+        content_lower = content.lower()
+        return any(trigger in content_lower for trigger in IMAGE_TRIGGERS)
+
     async def handle_mention(self, message: discord.Message):
         """Respond when directly mentioned."""
         async with message.channel.typing():
@@ -37,6 +43,11 @@ class Chat(commands.Cog):
 
             if not content:
                 content = "Someone summons me without purpose..."
+
+            # Check if this is an image request
+            if self._is_image_request(content):
+                await self.handle_image_request(message, content)
+                return
 
             # Get conversation history and format as context
             history = await get_conversation_history(str(message.channel.id))
@@ -79,6 +90,28 @@ class Chat(commands.Cog):
                 await message.channel.send(
                     f"*Melkior's crystal ball flickers and dims...* (Error: {str(e)[:100]})"
                 )
+
+    async def handle_image_request(self, message: discord.Message, content: str):
+        """Handle requests to conjure/draw images."""
+        try:
+            # Get grumpy commentary from Melkior
+            commentary_messages = [
+                {"role": "system", "content": IMAGE_CONJURE_PROMPT},
+                {"role": "user", "content": f"Someone asked you to conjure: {content}"}
+            ]
+            commentary = await get_completion(commentary_messages, max_tokens=100)
+
+            # Generate the image
+            image_bytes = await generate_image(content)
+
+            # Send commentary with image attached
+            file = discord.File(io.BytesIO(image_bytes), filename="conjured.png")
+            await message.channel.send(commentary, file=file)
+
+        except Exception as e:
+            await message.channel.send(
+                f"*Melkior's conjuration fizzles...* Bah! The arcane energies refuse to cooperate. ({str(e)[:80]})"
+            )
 
     async def handle_interjection(self, message: discord.Message):
         """Randomly interject with a grumpy comment."""
