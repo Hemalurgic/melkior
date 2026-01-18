@@ -21,5 +21,5 @@ INTERJECTION_CHANCE = float(os.getenv("INTERJECTION_CHANCE", "0.05"))
 MAX_CONVERSATION_HISTORY = 20  # Messages to remember per channel
 
 # Image generation
-IMAGE_MODEL = "google/gemini-2.5-flash-image-preview"
+IMAGE_MODEL = "google/gemini-2.5-flash-image"
 IMAGE_TRIGGERS = ["draw", "paint", "sketch", "conjure", "show me", "picture of", "image of", "illustrate", "visualize"]
