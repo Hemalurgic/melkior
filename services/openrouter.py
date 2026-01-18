@@ -46,6 +46,10 @@ async def generate_image(prompt: str) -> bytes:
         "model": IMAGE_MODEL,
         "messages": [{"role": "user", "content": prompt}],
         "modalities": ["image", "text"],
+        "provider": {
+            "order": ["google-ai-studio"],
+            "allow_fallbacks": False
+        },
     }
 
     async with aiohttp.ClientSession() as session:
